@@ -66,3 +66,32 @@ However, with each of these solutions, JS still run only a single thread at a ti
 This means with each solution, each JS environment still has its own distinct global variables, and no
 object-references can be shared between them.
 
+Because objects cannot be directly shared between different isolated context, a feature for communicating 
+is needed and is called *message passing*. 
+
+Message passing works by sharing some sort of serialized representation of an object/data (such as JSON) between
+separate isolates. If we don't serialize object, two separate isolates could modify same object at the same time.
+It would be a painful experience for debugging. These types of issue are reffered to as *deadlocks* and *race conditions*
+
+```JS
+const fs = require('fs');
+
+fs.readFile('/etc/passwd',
+  (err, data) => {
+    if (err) throw err;
+    console.log(data);
+  }
+);
+
+setImmediate(() => {
+  console.log('This run while file is being read!!!');
+});
+```
+
+Nodejs reads `/etc/passwd/`. It's scheduled by libuv. Then Node.js runs a callback `setImmediate` in new stack.
+It's scheduled by V8.
+
+Once the previous stack ends, a new stack is created and prints the message.
+
+Once the file is done reading, libuv sends the result to V8 event loop.
+
